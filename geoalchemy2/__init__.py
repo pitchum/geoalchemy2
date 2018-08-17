@@ -15,10 +15,18 @@ from .exc import ArgumentError
 from . import functions  # NOQA
 
 from sqlalchemy import Table, event
+from sqlalchemy.pool import Pool
 from sqlalchemy.sql import select, func, expression
 
 
 def _setup_ddl_event_listeners():
+    @event.listens_for(Pool, "connect")
+    def on_connect(cnx, connection_record):
+        if 'sqlite' in repr(cnx.__class__):
+            cnx.enable_load_extension(True)
+            cnx.execute('''select load_extension('mod_spatialite');''')
+            cnx.enable_load_extension(False)
+
     @event.listens_for(Table, "before_create")
     def before_create(target, connection, **kw):
         dispatch("before-create", target, connection)
